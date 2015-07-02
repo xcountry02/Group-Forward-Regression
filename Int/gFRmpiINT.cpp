@@ -706,7 +706,7 @@ int main( int argc, char *argv[] )
 
     // 'nStep' is the number of groups that will be added to the model.
 //    int nStep = min(ncov/size, (n - 1)/size);
-    int nStep = 0; // No groups in model yet
+    int nStep = numc; // Covariates added to model
 
 //printf("nStep: %d\n", nStep);
     vec L2(n + 1); // Likelihood vector
@@ -964,7 +964,7 @@ int main( int argc, char *argv[] )
 //    }
 
     fvec newvec(len + 1);
-    newvec(0)=0;
+    newvec(0)=numc; // Covariates added to model
     for (i=1; i<=len; i++){
       newvec(i) = size[i-1] + newvec(i-1);
     }

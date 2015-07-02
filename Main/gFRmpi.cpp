@@ -695,7 +695,7 @@ int main( int argc, char *argv[] )
     timer.tic();
 
     // 'nStep' at the end will be total number of groups selected in Step 1
-    int nStep = 0; // No groups in model yet
+    int nStep = numc; // Covariates added to model
 
     vec L2(n + 1); // Likelihood vector
     vec size(n + 1); // Group sizes for each group
@@ -909,7 +909,7 @@ int main( int argc, char *argv[] )
 
     // This vectore keeps track of model size for each model.
     fvec newvec(len+1);
-    newvec(0)=0;
+    newvec(0)=numc; // Covariates added to model
     for (i=1; i<=len; i++){
       newvec(i) = size(i-1) + newvec(i-1);
     }
