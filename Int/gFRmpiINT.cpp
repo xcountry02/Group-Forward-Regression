@@ -955,154 +955,76 @@ int main( int argc, char *argv[] )
 //printf("L[%d] = %.10lf\n", k, tmpL2);
     }    
 
-    // Significant groups
-//    double *all;
-//    all = (double *) malloc(sizeof(double) * len);
-//
-//    for (i=0; i<len; i++) {
-//      all[i] = gFR(i);
-//    }
-
+    // Calculate model size at each step
     fvec newvec(len + 1);
     newvec(0)=numc; // Covariates added to model
     for (i=1; i<=len; i++){
       newvec(i) = size[i-1] + newvec(i-1);
     }
 
-//cout << "here1" << endl;
+    // Calculate both small BIC and large BIC.  All possible values are returned
     // Calculate BIC (using small)
     double *mgBICs = (double *)malloc((len + 1)*sizeof(double));
 
     // Calculate BIC (using small)
     double *mgBICl = (double *)malloc((len + 1)*sizeof(double));
-//cout << "here2" << endl;
 
     // Small BIC calculation
     for ( i = 0; i <= len; i++) {
       mgBICs[i] = 2 * log(L2(i)) + ((newvec(i) + 1) * log(n)) / n;
     }
-//cout << "here3" << endl;
+
     // Large BIC calculation
     for ( i = 0; i <= len; i++) {
       mgBICl[i] = 2 * log(L2(i)) + ((newvec(i) + 1) * (log(n) + 2 * log(ncov))) / n;
     }
-//cout << "here4" << endl;
   
     L2.reset();
     ID.reset();
     newvec.reset();
-//cout << "here4" << endl;
 
     // Find the minimum BIC value and the associated subscript.  This subscript
     //   is the `best' model according to BIC
     double minbs = min(mgBICs, len + 1);
     double minbl = min(mgBICl, len + 1);
-//cout << "here5" << endl;
+
+
+    // The values recored pertain to both small BIC and large BIC.  They must
+    //   be entered into the beginning of the next step.
     numg[0] = which(mgBICs, len + 1, minbs); // Small BIC
     numg[1] = which(mgBICl, len + 1, minbl); // Small BIC
-//cout << "here6" << endl;
-    //free(mgBICs);
-    //free(mgBICl);
-//cout << "here7" << endl;
 
-
-
-
-
-
-
-
-//numg[0]=len-80;
-//numg[1]=len-50;
-
-
-
-
-
-
-
-
-
+    free(mgBICs);
+    free(mgBICl);
 
     nump[0]=0;
     nump[1]=0;
-//cout << "here8" << endl;
-    int cNumB[2][n]; // cNumB instead of cNumL
+
+    // Calculate cNum for both.
+    int cNumB[2][n];
     for (int a=0; a<2; a++){
       for (i=0; i<numg[a]; i++){
         nump[a] = size[i] + nump[a];
         cNumB[a][i] = nump[a];
-//        printf("cNumB[%d]: %d\n", i, (int) cNumB[a][i]);
       }
     }
-//cout << "here9" << endl;
-//printf("nump = %d\tnumg = %d\n", nump, numg);
 
-//nump=nStep;
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//cout << "here" << endl;
-//printf("len=%d\n", len);
-
-
-
-    for (int a=0; a<2; a++){    
+    // This section is adding the interaction terms to the model.  I need to
+    //   have two iterators because the main terms were selected by both
+    //   small BIC (a=0) and large bic (a=1).  Everything created in the loop
+    //   is locally only.
+    for (int a=0; a<2; a++){
+      // Parameter vector
       fvec ImFR(n+1);
-//printf("numg[%d]=%d\tnump[%d]=%d\n", a, (int) numg[a], a, (int) nump[a]);
+      // Output the main results into ansp[a] and ansg[a] where a=0,1
       if (numg[a] > 0) {
         // Takes the first `Tlen' from mFR to ansp[a]
         int tmp=0;
         for (i = 0; i < nump[a]; i++) {
           ansp[a][i] = MmFR(i);
-//printf("cNumB[%d][%d]=%d\n", a, tmp, cNumB[a][tmp]);
 
           if ((i+1) == cNumB[a][tmp]){
             ansg[a][tmp] = MgFR(tmp);
-//if (a==0) {
-//  printf("ansg[%d][%d]=%d\n", a, tmp, (int) ansg[a][tmp]);
-//}
             tmp++;
           }
         }
@@ -1110,87 +1032,54 @@ int main( int argc, char *argv[] )
         ansp[a][0] = 0;
         ansg[a][0] = 0;
       }
-
-//cout << "here1" << endl; 
-//cout << "here" << endl;
-    
-//      mFR.reset();
-//      gFR.reset();
-  
-//cout << "here2" << endl;
-//for (i=0; i< nump[a]; i++) {
-//  printf("ansp[%d]=%d\n", i, ansp[a][i]);
-//}
-  
+      
+      // Quicksort before gathering interacts  
       quicksort( ansp[a], 0, nump[a] - 1);
-//for (i=0; i< nump[a]; i++) {
-//  printf("ansp[%d]=%d\n", i, ansp[a][i]);
-//}
 
       quicksort( ansg[a], 0, numg[a] - 1);
-//cout << "here3" << endl;
-  
+ 
+      // Finding the starting position of each group is crucial 
       newCnum[0]=0;
       size[0]=nINgrp_org(ansg[a][0]);
+
       int tmp=0;
-//printf("numg[%d] = %d\n", a, (int) numg[a]);
       for ( i = 1; i < numg[a]; i++) {
-//printf("a=%d\ti=%d\n", a, i);
-//printf("ansg[%d][%d]=%d\n", a, i, (int) ansg[a][i]);
-//printf("nINgrp(%d)=%d\n", (int) ansg[a][i], (int) nINgrp_org(ansg[a][i]));
         size[i] = nINgrp_org(ansg[a][i]);
         tmp=size[i-1];
-//printf("tmp = %d\n", tmp);
         newCnum[i]=newCnum[i-1]+tmp;
-//printf("newCnum(%d) = %d\n", i, (int) newCnum(i));
       }
-//      for ( i = 1; i < numg[a]; i++) {
-//        size[i] = nINgrp_org(ansg[a][i]);
-////printf("size(%d) = %d\n", i+1, (int) size(i+1));
-//        tmp=size[i-1];
-////printf("tmp = %d\n", tmp);
-//        newCnum[i]=newCnum[i-1]+tmp;
-////printf("newCnum(%d) = %d\n", i, (int) newCnum(i));
-//      }
-//cout << "here8" << endl;
   
-      fmat mMAT(n, nump[a]);
-//cout << "here6" << endl;
+      fmat mMAT(n, nump[a]); // Create main matrix
 
       for ( i=0; i < nump[a]; i++) {  
         mMAT.col(i) = X0.col(ansp[a][i]);
       }
-//cout << "here7" << endl;
-  
-//  printf("mMAT:\n");
-//  print_matrix(mMAT);
-  
-  
-      if (numg[a] > 1) {
-        for ( k = 0; k < numg[a]; k++) {
-          for ( int l = k+1; l < numg[a]; l++) {
-            int tmp=size[k]*size[l];
-            fmat test(n, tmp);
 
-//printf("here:k=%d\tl=%d\n",k,l);
-//printf("newCnum(%d)=%d\tnewCnum(%d)=%d\n",k,(int) newCnum(k),l,(int) newCnum(l));
-//printf("size(%d)=%d\tsize(%d)=%d\n",k,(int) size(k),l,(int) size(l));
+      // Check the interactions and get rid of any groups that produce
+      //   a column of zeroes  
+      if (numg[a] > 1) { // More than one group (can be interactions)
+        for ( k = 0; k < numg[a]; k++) { // Iterate over main groups
+          // Interaction only with different column
+          for ( int l = k+1; l < numg[a]; l++) { 
+            int tmp=size[k]*size[l]; // size of single interaction group
+            fmat test(n, tmp); // Create temporary test interaction matrix
     
-            int intcnt=0;
-            int iflag=0;
+            int intcnt=0; // Iterator
+            int iflag=0; // Flag, check if any vector of zeroes
+            // Iterate over two main groups
             for ( i = (int) newCnum[k]; i < (int) newCnum[k] + (int) size[k]; i++) {
               for ( j = (int) newCnum[l]; j < (int) newCnum[l] + (int) size[l]; j++) {
-                test.col(intcnt) = mMAT.col(i) % mMAT.col(j);
-                if (sum(test.col(intcnt))==0) {
-                  iflag=1;
+                test.col(intcnt) = mMAT.col(i) % mMAT.col(j); // Multiply vectors
+                if (sum(test.col(intcnt))==0) { // Check if zero
+                  iflag=1; // If so do not include group
                   break;
                 }
                 intcnt++;
               }
             }
-            if (iflag == 0) {
+            if (iflag == 0) { // If all nonzero, count interaction term
               ig++;
-              icov=icov+tmp;
+              icov=icov+tmp; // Find total number of parmeters
             }
             test.reset();
           }
@@ -1204,6 +1093,9 @@ int main( int argc, char *argv[] )
       //  If the total number of groups is 1 or less no interactions can be
       //    found.  Kill all processes
       if ( numg[a] <= 1) {
+        if (a==0) {
+          break;
+        }
         t = timer.toc(); // End time
         for ( i = 1; i < np; i++ ){ // Send kill signal
           sendib[0] = -1;
@@ -1218,7 +1110,6 @@ int main( int argc, char *argv[] )
           numip[a][b]=0;
           ansip[a][b][0] = 0;
           ansig[a][b][0] = 0;
-// I really need to fix the coefficient vectors  
 coefi(y0, mMAT, (int) n, (int) ncov, (int) nump[a], (int) numg[a], (int) numip[a][b], (int*) size, (int*) newCnum, (int *) ansp[a], (int *) ansip[a][b], beta[a][b]);
         }
       } else {
@@ -1226,6 +1117,9 @@ coefi(y0, mMAT, (int) n, (int) ncov, (int) nump[a], (int) numg[a], (int) numip[a
         //  If the number of interactions (when counting) is zero, then all
         //    processes must be killed.
         if (ig == 0) {
+          if (a==0) { // Still need to do other
+            break;
+          }
           t = timer.toc(); // End time
           for ( i = 1; i < np; i++ ){ // Send kill signal
             sendib[0] = -1;
@@ -1244,58 +1138,32 @@ coefi(y0, mMAT, (int) n, (int) ncov, (int) nump[a], (int) numg[a], (int) numip[a
 coefi(y0, mMAT, (int) n, (int) ncov, (int) nump[a], (int) numg[a], (int) numip[a][b], (int*) size, (int*) newCnum, (int *) ansp[a], (int *) ansip[a][b], beta[a][b]);
           }
       
-        } else {  
+        } else {
+          // Create interaction matrix  
           fmat iMAT(n, nump[a] + icov);
     
+          // Enter parameters for matrix
           for ( i = 0; i < nump[a]; i++) {
             iMAT.col(i) = mMAT.col(i);
           }
-
-    //printf("mMAT:\n");
-    //print_matrix(mMAT);
-    //if (cnt == 111) {
-    //  printf("i = %d\tj = %d\n", i, j);
-    //  printf("mMAT column: %d\n", i + a);
-    //  print_matrix(mMAT.col(i + a));
-    //  printf("mMAT column: %d\n", j + b);
-    //  print_matrix(mMAT.col(j + b));
-    //  printf("iMAT column: %d\n", cnt + nump[a]);
-    //  print_matrix(iMAT.col(cnt+nump[a]));
-    //}
-    
   
-  
-// cout << "here1" << endl; 
-  
-  
-          int cntp=0;
-          int cntg=0;
+          int cntp=0; // Count interaction parameters
+          int cntg=0; // Count interaction groups
     
           int inum=0;
-          fvec inINgrp(ig);
-          fvec icNum(ig);
+          fvec inINgrp(ig); // Interaction group size
+          fvec icNum(ig); // Subscript interaction group
           fvec icNum_org(ig);
-// cout << "here2" << endl; 
           for ( k = 0; k < numg[a]; k++) {
-//printf("\ncntg=%d\ta=%d\tk=%d\n", cntg, a, k);
             for ( int l = k+1; l < numg[a]; l++) {
-//printf("\ncntg=%d\ta=%d\tk=%d\tl=%d\n", cntg, a, k, l);
               int tmp=size[k]*size[l];
-//printf("tmp=%d\n", tmp);
               fmat test(n, tmp);
     
               int intcnt=0;
               int iflag=0;
-//cout << "here" << endl;
               for ( i = (int) newCnum[k]; i < (int) newCnum[k] + (int) size[k]; i++) {
                 for ( j = (int) newCnum[l]; j < (int) newCnum[l] + (int) size[l]; j++) {
-//printf("\ni=%d\tj=%d\tintcnt=%d\n", i, j, intcnt);
-//if (j==10) {
-//printf("mMAT.col(%d):\n",j);
-//print_matrix(mMAT.col(j));
-//}
                   test.col(intcnt) = mMAT.col(i) % mMAT.col(j);
-//cout << "here1" << endl;
                   if (sum(test.col(intcnt))==0) {
                     iflag=1;
                     break;
@@ -1303,15 +1171,11 @@ coefi(y0, mMAT, (int) n, (int) ncov, (int) nump[a], (int) numg[a], (int) numip[a
                   intcnt++;
                 }
               }
-//cout << "here2" << endl;
               if (iflag == 0) {
-//cout << "here3" << endl;
                 for (int b = 0; b < tmp; b++) {
-//printf("cntp=%d\tb=%d\tnump[%d]=%d\n", cntp, b, b, nump[b]);
                   iMAT.col(cntp) = test.col(b);
                   cntp++;
                 }
-//cout << "here4" << endl;
                 icNum(cntg)=inum;
                 icNum_org(cntg)=inum;
                 inINgrp(cntg) = tmp;
@@ -1320,49 +1184,12 @@ coefi(y0, mMAT, (int) n, (int) ncov, (int) nump[a], (int) numg[a], (int) numip[a
                 s << k;
                 s << ",";
                 s << l;
-//cout << s.str().c_str() << endl;
-//                name.push_back(s.str().c_str());
-//printf("cntg=%d\ta=%d\tk=%d\tl=%d\n", cntg, a, k, l);
-                name[cntg][a]=s.str().c_str();
+                name[cntg][a]=s.str().c_str(); // Record interaction name
                 cntg++;
               }
               test.reset();
             }
           }
-// cout << "here3" << endl; 
-//        int cntp=0;
-//        fmat test(n, isize);
-//        for ( i = 0; i < nump[a]; i+=size) {
-//          for (j = i; j < nump[a]; j+=size) {
-//            if (i != j) {
-//              int tcnt=0;
-//              int tflag=0;
-//              for (int a=0; a< size; a++) {
-//                for (int b=0; b<size; b++) {
-//                  test.col(tcnt) = mMAT.col(i + a) % mMAT.col(j + b);
-//                  if (0 == sum(test.col(tcnt))) {
-//                    tflag=1;
-//                  }
-//                  tcnt++;
-//                }
-//              }
-//              if ( 0 == tflag) {
-//                for (int a = 0; a < isize; a++) {
-//                  iMAT.col(cntp+nump[a]) = test.col(a);
-//                  cntp++;
-//                }
-//                stringstream l;
-//                int tmp1 = ansp[a][i]/size;
-//                int tmp2 = ansp[a][j]/size;
-//                l << tmp1;
-//                l << ",";
-//                l << tmp2;
-//                name.push_back(l.str().c_str());
-//              }
-//            }
-//          }
-//        }
-//        test.reset();
 
           y = y0;
 
@@ -1375,7 +1202,8 @@ if ((me == 0) && (prnt==0)) {
   printf("\n(1) y\n");
   print_matrix(y);
 }
-  
+
+          // Add main parameters to model  
           for (j = 0; j < numg[a]; j++) {
             fmat tmpX(n, size[j]);
             for (i = 0; i < size[j]; i++) {
@@ -1439,7 +1267,7 @@ if ((me == 0) && (prnt ==0)) {
           // 'iStep' is the number of groups that will be added to the model.
       //    int iStep = min(ncov/size, (n - 1)/size);
       //printf("nump[a] = %d\n", nump[a]);
-          int iStep = nump[a]; // Main groups in model
+          int iStep = nump[a] + numc; // Main groups in model and covariates
       
       //printf("iStep: %d\n", iStep);
           vec L2(n + 1); // Likelihood vector
@@ -1680,7 +1508,7 @@ if ((me == 0) && (prnt ==0)) {
           //free(subsi);
 //cout << "here1" << endl;
           fvec newvec(len + 1);
-          newvec(0)=nump[a];
+          newvec(0)=nump[a]+numc;
           for (i=1; i<=len; i++){
             newvec(i) = isize(i-1) + newvec(i-1);
           }
@@ -1698,24 +1526,18 @@ if ((me == 0) && (prnt ==0)) {
           }
           // Large BIC calculation
           for ( i = 0; i <= len; i++) {
-            igBICl[i] = 2 * log(L2(i)) + ((newvec(i) + 1) * log(n)) / n;
+            igBICl[i] = 2 * log(L2(i)) + ((newvec(i) + 1) * (log(n) + 2*log(ncov+icov) / n;
           }
-//cout << "here4" << endl;
 
           // Find the minimum BIC value and the associated subscript.  This subscript
           //   is the `best' model according to BIC
-//cout << "here5" << endl;
           double minbs = min(igBICs, len + 1);
           double minbl = min(igBICl, len + 1);
           numig[a][0] = which(igBICs, len + 1, minbs);
-//printf("numig[%d][0]=%d\n", a, numig[a][0]);
           numig[a][1] = which(igBICl, len + 1, minbl);
-//printf("numig[%d][1]=%d\n", a, numig[a][1]);
           free(igBICs);
           free(igBICl);
-//cout << "here6" << endl;
       
-          //cout << "Made it here?" << endl;
           numip[a][0]=0;
           numip[a][0]=0;
           int icNumB[2][n]; // cNumB instead of cNumL
@@ -1725,7 +1547,6 @@ if ((me == 0) && (prnt ==0)) {
               icNumB[b][i] = numip[a][b];
             }
           }
-//cout << "here7" << endl;
         
           for (int b=0; b<2; b++) {
             if (numig[a][b] > 0) {
